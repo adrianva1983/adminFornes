@@ -1,0 +1,138 @@
+<?php
+//VERSIÓN: v1.0 2014-5-30
+//COMPATIBLE PHP 5.5
+//DEFINICIÓN VARIABLES
+$Id = $_GET["Id"];
+$pdf = $_GET["pdf"];
+$seguridad = $_GET["seguridad"];
+if ($_SESSION['idioma']!="") $Idioma = $_SESSION['idioma'];
+else $Idioma = $_GET["Idioma"];
+
+//Accedemos a la base de datos
+require($_SERVER['DOCUMENT_ROOT']."/administra/Interface/conexion.php");
+//Cargamos el idioma
+require($_SERVER['DOCUMENT_ROOT']."/administra/Gestion/idiomas/factura_imprimible-".$Idioma.".conf");
+$html = "";
+if ($_GET['descargada']==1)
+{
+	$requete = "UPDATE `Facturas` SET `FechaDescarga`='".date('Y-m-d H:i:s')."' WHERE `Id`=".$Id;
+	mysqli_query($db,$requete);
+}
+$requete = "SELECT * FROM Facturas WHERE Id=".$Id;
+$result = mysqli_query($db, $requete);
+$listado = mysqli_fetch_object($result);
+//print "HOLA";
+//print $seguridad."<br/>";
+//print md5($Id.$listado->Fecha."SEMILLA123".$listado->Vencimiento)."<br/>";
+if ($seguridad!=md5($Id.$listado->Fecha."SEMILLA123".$listado->Vencimiento))
+{
+	die ("Error cod.:1 - Acceso incorrecto!");
+	exit;
+}
+$requete2 = "SELECT * FROM `FacturasEmpresas` WHERE `IdEmpresa` = '".$listado->IdEmpresa."'";
+$html.= "<html><body style=\"background:#EEEEEE;\">";
+$html.= "<div style=\"padding:20px;width:670px;background:#FFFFFF;\">";
+$html.= "<table><tr>";
+$html.= "<td style=\"width:450px;\">";
+if ($result2 = mysqli_query($db, $requete2))
+{
+	$listado2 = mysqli_fetch_object($result2);
+	$DatosSocietarios = $listado2->DatosSocietarios;
+	$NumeroCuenta = $listado2->NumeroCuenta;
+	$html.= "<img src=\"".$listado2->URLLogo."\"/>";
+}
+$html.= "</td>";
+$html.= "<td style=\"width:220px;\">";
+$html.= "<p style=\"color:#999999;font-size:10px;\">";
+$html.= "<strong>".htmlentities($listado2->NombreComercial,ENT_QUOTES,'ISO-8859-1')."</strong><br/>";
+$html.= htmlentities($listado2->DenominacionSocial,ENT_QUOTES,'ISO-8859-1')."<br/>";
+$html.= $listado2->CIF."<br/>";
+if ($listado2->DatosContacto!="") $html.= htmlentities($listado2->DatosContacto,ENT_QUOTES,'ISO-8859-1')."<br/>";
+$html.= "</p>";
+$html.= "</td>";
+$html.= "</tr></table>";
+$html.= "<div style=\"width:100%;\">";
+$requete2 = "SELECT * FROM `Clientes` WHERE `Id` = '".$listado->IdCliente."'";
+if ($result2 = mysqli_query($db, $requete2))
+{
+	$listado2 = mysqli_fetch_object($result2);
+	$html.= htmlentities($listado2->Cliente,ENT_QUOTES,'ISO-8859-1')."<br/>";
+	$html.= "<strong>".htmlentities($listado2->DenominacionSocial,ENT_QUOTES,'ISO-8859-1')."</strong><br/>";
+	$html.= "<strong>".$listado2->CIF."</strong><br/>";
+	$html.= htmlentities($listado2->Direccion,ENT_QUOTES,'ISO-8859-1').". ".htmlentities($listado2->Poblacion,ENT_QUOTES,'ISO-8859-1');	
+	if ($listado2->Municipio!=$listado2->Poblacion) $html.=". ".htmlentities($listado2->Municipio,ENT_QUOTES,'ISO-8859-1');
+	$html.=". ".htmlentities($listado2->CP,ENT_QUOTES,'ISO-8859-1')." - ".htmlentities($listado2->Provincia,ENT_QUOTES,'ISO-8859-1')."<br/>";
+}
+$html.= "</div>";
+$html.= "<p><strong>".htmlentities($lang["numeroFactura"],ENT_QUOTES,'ISO-8859-1').":</strong> ";
+if ($listado->SerieFactura!="") $html.=$listado->SerieFactura."-";
+$html.=$listado->NumeroFactura."<br/>";
+$fecha = explode("-",$listado->Fecha);
+$vencimiento = explode("-",$listado->Vencimiento);
+$html.= "<strong>".$lang["fecha"].":</strong> ".$fecha[2]."/".$fecha[1]."/".$fecha[0]."<br/>";
+$html.= "<strong>".$lang["vencimiento"].":</strong> ".$vencimiento[2]."/".$vencimiento[1]."/".$vencimiento[0]."<br/>";
+$html.= "</p>";
+$requete2 = "SELECT * FROM `FacturasLineas` WHERE `IdFactura` = '".$Id."' ORDER BY Id";
+$baseImponible = 0;
+$impuestos = 0;
+if ($result2 = mysqli_query($db, $requete2))
+{
+	$html.= "<table style=\"width:100%\" cellpadding=4px cellspacing=4px><tr style=\"background:#999999;color:#FFFFFF;\"><th>".$lang["concepto"]."</th><th>".$lang["baseImponible"]."</th><th>".$lang["impuesto"]."</th></tr>";
+	while ($listado2 = mysqli_fetch_object($result2))
+	{
+		$html.= "<tr>";
+		$html.= "<td style=\"background:#EFEFEF\">".htmlentities($listado2->Texto,ENT_QUOTES,'ISO-8859-1')."</td>";
+		$baseImponible+= $listado2->BaseImponible;		
+		$html.= "<td style=\"background:#EFEFEF\">".$listado2->BaseImponible." &euro;</td>";
+		$impuestos+=($listado2->BaseImponible * $listado2->Impuesto);
+		$impuesto = $listado2->Impuesto * 100;
+		$html.= "<td style=\"background:#EFEFEF\">".$impuesto." &#37;</td>";
+		$html.= "</tr>";
+	}
+	$html.= "</table>";	
+}
+$html.= "<p>";
+$html.= "<strong>".$lang["subtotal"].":</strong> ".$baseImponible." &euro;<br/>";
+$html.= "<strong>".$lang["impuesto"].":</strong> ".$impuestos." &euro;<br/>";
+$total = $baseImponible+$impuestos;
+$html.= "<strong>".$lang["total"].":</strong> ".$total." &euro;<br/>";
+$html.= "</p>";
+if ($listado->FormaDePago!="")
+{
+	$html.= "<p style=\"color:#999999;font-size:10px;\">";
+	$html.= $lang["formaPago"].": ";
+	if ($listado->FormaDePago==1) 
+	{
+		$html.= $lang["transferencia"]."<br/>";
+		$html.= $lang["cuentaBancaria"]." ".$NumeroCuenta;		
+	}
+	if ($listado->FormaDePago==2) 
+	{
+		$html.= $lang["reciboDomiciliado"]."<br/>";	
+	}
+	$html.= "</p>";
+}
+if ($DatosSocietarios!="")
+{
+	$html.= "<p style=\"color:#999999;font-size:10px;\">";
+	$html.= htmlentities($DatosSocietarios,ENT_QUOTES,'ISO-8859-1');
+	$html.= "</p>";
+}
+$html.= "</div>";
+
+$html.= "</body></html>";
+require($_SERVER['DOCUMENT_ROOT']."/administra/Interface/cierre.php");
+if ($pdf=="si")
+{
+	require_once $_SERVER['DOCUMENT_ROOT']."/administra/herramientas/mpdf/vendor/autoload.php";
+	//$mpdf = new \Mpdf\Mpdf();
+	$mpdf=new mPDF('es','A4','','Arial','10','10','10','10');
+	$mpdf->WriteHTML($html);
+	$mpdf->Output();
+	//include($_SERVER['DOCUMENT_ROOT']."/herramientas/MPDF57/mpdf.php");	
+	//$mpdf->WriteHTML($html);
+	//$mpdf->Output();
+	exit;
+}
+else print $html;
+?>

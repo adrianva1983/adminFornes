@@ -1,0 +1,115 @@
+body {
+	background:#FFF none repeat;
+	color:#000000;
+	font-family:Helvetica;
+	margin:0;
+	overflow:hidden;
+}
+ol, li, h2 {
+	margin:0; 
+	padding:0;
+}
+p{
+	text-shadow: rgba(0, 0, 0, 0.4) 0 -1px 0;
+	margin:0;
+	padding:10%;
+}
+#cabecera {
+	background: url(http://www.guiarestaurantes.org/Plantillas/Imagenes/h1.png) repeat-x;
+	border-bottom:1px solid #333;
+	padding:9.5px 0;
+}
+h1 {
+	color:#FFF;
+	font-size:21px;
+	margin:0;
+	text-align:center;
+	text-shadow: rgba(0, 0, 0, 0.4) 0 -1px 0;
+	border-bottom:1px solid #333;
+}
+#volver {
+    left: 6px;
+    right: auto;
+    padding: 0;
+    max-width: 55px;
+    border-width: 0 8px 0 14px;    
+}
+.boton {
+	position: absolute;
+    overflow: hidden;
+    top: 8px;
+    right: 6px;
+    margin: 0;
+    border-width: 0 5px;
+    padding: 0 3px;
+    width: auto;
+    height: 30px;
+    line-height: 30px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #FFF;
+    text-shadow: rgba(0, 0, 0, 0.6) 0px -1px 0;
+    text-overflow: ellipsis;
+    text-decoration: none;
+    white-space: nowrap;
+    background: none;
+}
+#ImagenAncho {
+ /* width: 100%; */    
+}
+#index li a:active {
+    background-color: #999999; !important;
+    background-image: url(http://www.guiarestaurantes.org/Plantillas/Imagenes/index-a-active.png);
+    background-repeat: no-repeat;
+    background-position: right center;
+    color: #FFFFFF !important;
+}
+#index li {
+	border-bottom:1px solid #E0E0E0;
+	font-size:14px;
+	font-weight:bold;
+	list-style-image:none;
+	list-style-position:outside;
+	list-style-type:none;
+	margin:0;
+	padding:0;
+	position:relative;
+}
+#index li a {
+	background: url(http://www.guiarestaurantes.org/Plantillas/Imagenes/index-a.png) no-repeat right center;
+	color:inherit;
+	display:block;
+	padding:12px 32px 12px 10px;
+	text-decoration:none;
+}
+#index li span {
+	color:#ccc;
+	display:block;
+	padding:12px 32px 12px 10px;
+	text-decoration:none;
+}
+#detalle li {
+	background:url(http://www.guiarestaurantes.org/Plantillas/Imagenes/detalle-li.png) repeat-x;
+	padding:15px;
+	margin-bottom:5px;
+}
+#detalle h2 {
+	font-size:22px;
+	text-align:center;
+	padding:12px;
+	margin: 0px;
+}
+#ImagenAncho {	
+	width:100%;
+}
+#detalle span {
+	font-size:16px;	
+}
+#detalle p {
+	color:#00000;
+	font-size:15px;
+	padding:12px;
+}
+img {
+	border:0px;
+}

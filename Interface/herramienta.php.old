@@ -1,0 +1,65 @@
+<?php
+$herramienta = $_GET["herramienta"];
+$modulo = $_GET["modulo"];
+//Comprobamos el acceso
+require($_SERVER['DOCUMENT_ROOT']."/administra/Permisos/aut_verifica.inc.php");
+$nivel_acceso=4; // Nivel de acceso para esta página.
+$URL = $_SERVER['SCRIPT_URI']."?";
+for ($i=0;($i<$_SERVER['argc']);$i++)
+{
+ $URL = $URL.$_SERVER['argv'][$i];
+}
+
+if ($nivel_acceso <= $_SESSION['usuario_nivel'])
+{
+ header ("Location: $redir?error_login=5");
+ exit;
+}
+?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="es" xmlns="http://www.w3.org/1999/xhtml" xml:lang="es">
+<head>
+<title>Administración</title>
+<meta content="text/html; charset=iso-8859-1" http-equiv="Content-Type">
+<link href="../../estilos/css-administra.php" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="../../herramientas/Scripts/jquery-1.7.2.min.js"></script>
+<script src="//code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css" />
+</head>
+<body>
+<div id="maincontainer">
+
+<div id="topsection">
+</div>
+
+<div id="contentwrapper">
+
+<div id="leftcolumn">
+<?php
+require("cabecera.php");
+require("menumodulos.php");
+?>
+</div>
+
+<div id="contentcolumn">
+<?php
+require("cabecera_info.php");
+require("../".$modulo."/".$herramienta.".php");	
+?>
+</div>
+
+<div id="rightcolumn">
+<?php
+require("../".$modulo."/"."acciones.php");
+?>
+</div>
+</div>
+
+<div id="footer">
+<?php
+require("pie.php");
+?>
+</div>
+</div>
+</body>
+</html>

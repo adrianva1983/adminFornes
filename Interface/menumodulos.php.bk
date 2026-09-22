@@ -1,0 +1,187 @@
+<?php
+if ($_SERVER['HTTP_REFERER'] == ""){
+	die ("Error cod.:1 - Acceso incorrecto!");
+	exit;
+}
+//Definimos variables
+if (!isset($modulo)) $modulo="";
+
+//Conexión BBDD
+require($_SERVER['DOCUMENT_ROOT']."/administra/Interface/conexion.php");
+//Sacamos los textos
+$textos = array();
+$requete = "SELECT * FROM `Herramientas` WHERE `Idioma`='".$_SESSION['idioma']."' AND `Accion`='no'";
+
+if ($result = mysqli_query($db, $requete))
+{
+	while($listado = mysqli_fetch_object($result))
+	{
+		$textos[$listado->IdHerramienta]=$listado->Nombre;
+		if ($listado->Activado=="si") $herramienta_activada[$listado->IdHerramienta]="si";
+	}
+}
+//Sacamos las herramientas de los grupos a los que pertenezca
+$herramientas = array();
+$requete = "SELECT * FROM `PertenenciaGrupos` WHERE `IdUsuario` = '".$_SESSION['usuario_id']."'";
+
+if ($result = mysqli_query($db, $requete))
+{
+	while($listado = mysqli_fetch_object($result))
+	{
+		$requete2 = "SELECT * FROM `UsuariosHerramientas`,`Herramientas` WHERE `UsuariosHerramientas`.IdHerramienta=`Herramientas`.IdHerramienta AND `Herramientas`.Accion='no' AND `Herramientas`.Activado='si' AND `UsuariosHerramientas`.IdGrupo='".$listado->IdGrupo."'";
+		
+		if ($result2 = mysqli_query($db, $requete2))
+		{
+			while($listado2 = mysqli_fetch_object($result2))
+			{
+				$herramientas[$listado2->IdHerramienta]="si";
+			}
+		}
+	}
+}
+//Sacamos las herramientas que tiene disponibles el usuario
+$requete = "SELECT * FROM `UsuariosHerramientas`,`Herramientas` WHERE `UsuariosHerramientas`.IdHerramienta=`Herramientas`.IdHerramienta AND `Herramientas`.Accion='no' AND `Herramientas`.Activado='si' AND `UsuariosHerramientas`.IdUsuario='".$_SESSION['usuario_id']."'";
+
+if ($result = mysqli_query($db, $requete))
+{
+	while($listado = mysqli_fetch_object($result))
+	{
+		$herramientas[$listado->IdHerramienta]="si";
+	}
+}
+//Pintamos las herramientas específicas
+$requete = "SELECT * FROM `HerramientasPersonalizadas` WHERE `Accion`='no' AND `Activado`='si' AND `Idioma`='".$_SESSION['idioma']."' AND `IdPadre` IS NULL";
+
+if (($result) && (mysqli_num_rows($result)>0) && ($_SESSION['usuario_nivel']<2))
+{
+	while($listado = mysqli_fetch_object($result))
+	{
+		$requete2 = "SELECT * FROM `HerramientasPersonalizadas` WHERE `Accion`='no' AND `Activado`='si' AND `IdPadre`='".$listado->IdHerramienta."' AND `Idioma`='".$_SESSION['idioma']."'";
+				
+		if ($result2 = mysqli_query($db, $requete2))
+		{
+			if ($modulo=="Especifico")
+			{
+				print "<div id=\"menu1_over\" onclick=\"pliega_despliega ('#menu_dentro0');\">";
+			}
+			else
+			{
+				print "<div id=\"menu1\" onclick=\"pliega_despliega ('#menu_dentro0');\">";
+			}			
+			print "<img src=\"http://".$_SERVER['SERVER_NAME'].$listado->URLIcono."\"><span>".$listado->Nombre."</span>";
+			print "</div>";
+			if ($modulo=="Especifico") print "<div id=\"menu_dentro_seleccionado\">";
+			else print "<div id=\"menu_dentro0\">";
+			while($listado2 = mysqli_fetch_object($result2))
+			{
+				print "<p><a href=\"herramienta.php?modulo=Especifico&herramienta=".$listado2->FicheroPHP."\"><img src=\"http://".$_SERVER['SERVER_NAME'].$listado2->URLIcono."\">".$listado2->Nombre."</a></p>";
+			}
+			print "</div>";
+		}
+	}
+}
+require($_SERVER['DOCUMENT_ROOT']."/administra/Interface/cierre.php");
+//Pintamos el resto de herramientas
+if ((isset($herramientas[1])&&$herramientas[1]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[1]!="")) //HERRAMIENTA USUARIOS
+{
+	print '<li';
+	if ($modulo=="Usuarios") print ' class="active"';
+	print '><a href="#"><i class="fa fa-users"></i> <span class="nav-label">'.$textos[1].'</span> <span class="fa arrow"></span></a>';
+	print '<ul class="nav nav-second-level">';
+	if ((isset($herramientas[2])&&$herramientas[2]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[2]!="")) print "<li><a href=\"herramienta.php?modulo=Usuarios&herramienta=buscar\"><i class='fa fa-search'></i> ".$textos[2]."</a></li>";//Buscar
+	if ((isset($herramientas[3])&&$herramientas[3]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[3]!="")) print "<li><a href=\"herramienta.php?modulo=Usuarios&herramienta=usuarios\"><i class='fa fa-user'></i> ".$textos[3]."</a></li>";//Usuarios
+	if ((isset($herramientas[4])&&$herramientas[4]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[4]!="")) print "<li><a href=\"herramienta.php?modulo=Usuarios&herramienta=grupos\"><i class='fa fa-group'></i> ".$textos[4]."</a></li>";//Grupos
+	if ((isset($herramientas[31])&&$herramientas[31]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[31]!="")) print "<li><a href=\"herramienta.php?modulo=Usuarios&herramienta=migracion\"><i class='fa fa-cogs'></i> ".$textos[31]."</a></li>";//Migración
+	print "</ul></li>";
+}
+if ((isset($herramientas[5])&&$herramientas[5]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[5]!="")) //HERRAMIENTA  SECCIONES
+{
+	print '<li';
+	if ($modulo=="Carpetas") print ' class="active"';
+	print '><a href="#"><i class="fa fa-folder"></i> <span class="nav-label">'.$textos[5].'</span> <span class="fa arrow"></span></a>';
+	print '<ul class="nav nav-second-level">';
+	if ((isset($herramientas[6])&&$herramientas[6]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[6]!="")) print "<li><a href=\"herramienta.php?modulo=Carpetas&herramienta=raiz\"><i class='fa fa-home'></i> ".$textos[6]."</a></li>";//Raiz
+	if ((isset($herramientas[7])&&$herramientas[7]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[7]!="")) print "<li><a href=\"herramienta.php?modulo=Carpetas&herramienta=buscar\"><i class='fa fa-search'></i> ".$textos[7]."</a></li>";//Buscar
+	if ((isset($herramientas[8])&&$herramientas[8]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[8]!="")) print "<li><a href=\"herramienta.php?modulo=Carpetas&herramienta=arbol\"><i class='fa fa-tree'></i> ".$textos[8]."</a></li>";//Arbol
+	print "</ul></li>";
+}
+if ((isset($herramientas[9])&&$herramientas[9]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[9]!="")) //HERRAMIENTA CONTENIDOS
+{
+	print '<li';
+	if ($modulo=="Contenidos") print ' class="active"';
+	print '><a href="#"><i class="fa fa-th"></i> <span class="nav-label">'.$textos[9].'</span> <span class="fa arrow"></span></a>';
+	print '<ul class="nav nav-second-level">';		
+	if ((isset($herramientas[10])&&$herramientas[10]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[10]!="")) print "<li><a href=\"herramienta.php?modulo=Contenidos&herramienta=buscar\"><i class='fa fa-search'></i> ".$textos[10]."</a></li>";//Buscar
+	if ((isset($herramientas[11])&&$herramientas[11]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[11]!="")) print "<li><a href=\"herramienta.php?modulo=Contenidos&herramienta=tipo_contenidos\"><i class='fa fa-tag'></i> ".$textos[11]."</a></li>";//Tipos
+	if ((isset($herramientas[12])&&$herramientas[12]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[12]!="")) print "<li><a href=\"herramienta.php?modulo=Contenidos&herramienta=foros\"><i class='fa fa-comments'></i> ".$textos[12]."</a></li>";//Foros
+	if ((isset($herramientas[134])&&$herramientas[134]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[134]!="")) print "<li><a href=\"herramienta.php?modulo=Contenidos&herramienta=glosario\"><i class='fa graduation-cap'></i> ".$textos[134]."</a></li>";//Glosario
+	print "</ul></li>";
+}
+if ((isset($herramientas[13])&&$herramientas[13]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[13]!="")) //HERRAMIENTA EBOLETINES
+{
+	print '<li';
+	if ($modulo=="Boletin") print ' class="active"';
+	print '><a href="#"><i class="fa fa-rss"></i> <span class="nav-label">'.$textos[13].'</span> <span class="fa arrow"></span></a>';
+	print '<ul class="nav nav-second-level">';		
+	if ((isset($herramientas[112])&&$herramientas[112]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[112]!="")) print "<li><a href=\"herramienta.php?modulo=Boletin&herramienta=mensajeria\"><i class='fa fa-envelope'></i> ".$textos[112]."</a></li>";//Mensajería
+	if ((isset($herramientas[14])&&$herramientas[14]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[14]!="")) print "<li><a href=\"herramienta.php?modulo=Boletin&herramienta=boletines\"><img src=\"../Imagenes/newspaper.png\">".$textos[14]."</a></li>";//Boletines
+	if ((isset($herramientas[15])&&$herramientas[15]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[15]!="")) print "<li><a href=\"herramienta.php?modulo=Boletin&herramienta=SMS\"><i class='fa fa-phone'></i> ".$textos[15]."</a></li>";//SMS
+	if ((isset($herramientas[16])&&$herramientas[16]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[16]!="")) print "<li><a href=\"herramienta.php?modulo=Boletin&herramienta=estadisticas\"><img src=\"../Imagenes/boletin_estadisticas.png\">".$textos[16]."</a></li>";//Estadísticas	
+	if ((isset($herramientas[142])&&$herramientas[142]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[142]!="")) print "<li><a href=\"herramienta.php?modulo=Boletin&herramienta=notificaciones\"><i class='fa fa-bell'></i> ".$textos[142]."</a></li>";//Notificaciones
+	print "</ul></li>";
+}
+if ((isset($herramientas[17])&&$herramientas[17]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[17]!="")) //HERRAMIENTA COMERCIO
+{
+	print '<li';
+	if ($modulo=="Comercio") print ' class="active"';
+	print '><a href="#"><i class="fa fa-shopping-cart"></i> <span class="nav-label">'.$textos[17].'</span> <span class="fa arrow"></span></a>';
+	print '<ul class="nav nav-second-level">';		
+	if ((isset($herramientas[139])&&$herramientas[139]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[139]!="")) print "<li><a href=\"herramienta.php?modulo=Comercio&herramienta=pedidos\"><img src=\"../Imagenes/cart.png\">".$textos[139]."</a></li>";//Pedidos	
+	if ((isset($herramientas[18])&&$herramientas[18]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[18]!="")) print "<li><a href=\"herramienta.php?modulo=Comercio&herramienta=reservas\"><img src=\"../Imagenes/reservas.png\">".$textos[18]."</a></li>";//Reservas
+	if ((isset($herramientas[19])&&$herramientas[19]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[19]!="")) print "<li><a href=\"herramienta.php?modulo=Comercio&herramienta=referidos\"><img src=\"../Imagenes/money.png\">".$textos[19]."</a></li>";//Referidos
+	print "</ul></li>";
+}
+if ((isset($herramientas[20])&&$herramientas[20]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[20]!="")) //HERRAMIENTA ESTADÍSTICAS
+{
+	print '<li';
+	if ($modulo=="Estadisticas") print ' class="active"';
+	print '><a href="#"><i class="fa fa-bar-chart"></i> <span class="nav-label">'.$textos[20].'</span> <span class="fa arrow"></span></a>';
+	print '<ul class="nav nav-second-level">';		
+	if ((isset($herramientas[136])&&$herramientas[136]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[136]!="")) print "<li><a href=\"herramienta.php?modulo=Estadisticas&herramienta=busquedas\"><img src=\"../Imagenes/find.png\">".$textos[136]."</a></li>";//Búsquedas
+	if ((isset($herramientas[21])&&$herramientas[21]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[21]!="")) print "<li><a href=\"herramienta.php?modulo=Estadisticas&herramienta=raiz\"><img src=\"../Imagenes/secciones.png\">".$textos[21]."</a></li>";//Secciones
+	if ((isset($herramientas[22])&&$herramientas[22]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[22]!="")) print "<li><a href=\"herramienta.php?modulo=Estadisticas&herramienta=contenidos_raiz\"><img src=\"../Imagenes/contenido.png\">".$textos[22]."</a></li>";//Contenidos
+	if ((isset($herramientas[23])&&$herramientas[23]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[23]!="")) print "<li><a href=\"#\"><img src=\"../Imagenes/boletines.png\">".$textos[23]."</a></li>";//Boletines
+	print "</ul></li>";
+}
+if ((isset($herramientas[119])&&$herramientas[119]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[119]!="")) //HERRAMIENTA GESTIÓN
+{
+	print '<li';
+	if ($modulo=="Gestion") print ' class="active"';
+	print '><a href="#"><i class="fa fa-building"></i> <span class="nav-label">'.$textos[119].'</span> <span class="fa arrow"></span></a>';
+	print '<ul class="nav nav-second-level">';		
+	if ((isset($herramientas[143])&&$herramientas[143]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[143]!="")) print "<li><a href=\"herramienta.php?modulo=Gestion&herramienta=empleados\"><i class='fa fa-address-card'></i> ".$textos[143]."</a></li>";//Empleados
+	if ((isset($herramientas[108])&&$herramientas[108]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[108]!="")) print "<li><a href=\"herramienta.php?modulo=Gestion&herramienta=tareas\"><i class='fa fa-tasks'></i> ".$textos[108]."</a></li>";//Tareas
+	if ((isset($herramientas[129])&&$herramientas[129]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[129]!="")) print "<li><a href=\"herramienta.php?modulo=Gestion&herramienta=proyectos&Activos=si\"><i class='fa fa-archive'></i> ".$textos[129]."</a></li>";//Proyectos
+	if ((isset($herramientas[120])&&$herramientas[120]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[120]!="")) print "<li><a href=\"herramienta.php?modulo=Gestion&herramienta=clientes\"><i class='fa fa-users'></i> ".$textos[120]."</a></li>";//Clientes
+	if ((isset($herramientas[141])&&$herramientas[141]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[141]!="")) print "<li><a href=\"herramienta.php?modulo=Gestion&herramienta=crm\"><i class='fa fa-phone'></i> ".$textos[141]."</a></li>";//CRM
+	if ((isset($herramientas[121])&&$herramientas[121]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[121]!="")) print "<li><a href=\"herramienta.php?modulo=Gestion&herramienta=presupuestos\"><i class='fa fa-briefcase'></i> ".$textos[121]."</a></li>";//Presupuestos
+	if ((isset($herramientas[122])&&$herramientas[122]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[122]!="")) print "<li><a href=\"herramienta.php?modulo=Gestion&herramienta=facturas\"><i class='fa fa-calculator'></i> ".$textos[122]."</a></li>";//Facturas
+	if ((isset($herramientas[126])&&$herramientas[126]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[126]!="")) print "<li><a href=\"herramienta.php?modulo=Gestion&herramienta=contabilidad\"><i class='fa fa-retweet'></i> ".$textos[126]."</a></li>";//Contabilidad
+	if ((isset($herramientas[127])&&$herramientas[127]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[127]!="")) print "<li><a href=\"herramienta.php?modulo=Gestion&herramienta=balance\"><i class='fa fa-money'></i> ".$textos[127]."</a></li>";//Balances
+	print "</ul></li>";
+}
+if ((isset($herramientas[24])&&$herramientas[24]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[24]!="")) //HERRAMIENTA ADMINISTRA
+{
+	print '<li';
+	if ($modulo=="Administra") print ' class="active"';
+	print '><a href="#"><i class="fa fa-cogs"></i> <span class="nav-label">'.$textos[24].'</span> <span class="fa arrow"></span></a>';
+	print '<ul class="nav nav-second-level">';		
+	if ((isset($herramientas[25])&&$herramientas[25]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[25]!="")) print "<li><a href=\"herramienta.php?modulo=Administra&herramienta=servidor\"><img src=\"../Imagenes/servidor.png\">".$textos[25]."</a></li>";//Servidor
+	if ((isset($herramientas[26])&&$herramientas[26]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[26]!="")) print "<li><a href=\"herramienta.php?modulo=Administra&herramienta=colores_aplicacion\"><img src=\"../Imagenes/colores.png\">".$textos[26]."</a></li>";//Colores
+	if ((isset($herramientas[27])&&$herramientas[27]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[27]!="")) print "<li><a href=\"herramienta.php?modulo=Administra&herramienta=contenidos_administracion\"><img src=\"../Imagenes/contenidos_administracion.png\">".$textos[27]."</a></li>";//Contenidos Administración
+	if ((isset($herramientas[28])&&$herramientas[28]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[28]!="")) print "<li><a href=\"#\"><img src=\"../Imagenes/textos.png\">".$textos[28]."</a></li>";//Textos Fijos
+	if ((isset($herramientas[29])&&$herramientas[29]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[29]!="")) print "<li><a href=\"#\"><img src=\"../Imagenes/EN.png\">".$textos[29]."</a></li>";//Idiomas
+	if ((isset($herramientas[30])&&$herramientas[30]=="si")||($_SESSION['usuario_nivel']<1)||($_SESSION['usuario_nivel']<2&&$herramienta_activada[30]!="")) print "<li><a href=\"herramienta.php?modulo=Administra&herramienta=grupos_camposadicionales\"><img src=\"../Imagenes/grupo_adicionales.png\">".$textos[30]."</a></li>";//Grupos Campos Adicionales	
+	print "</ul></li>";
+}
+?>

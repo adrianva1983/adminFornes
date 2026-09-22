@@ -1,0 +1,15 @@
+# Credenciales - no versionar
+Interface/conexion.php
+Boletin/masymas-fornes-firebase-adminsdk-*.json
+Gestion/client_secret_*.json
+
+# Caché (puede contener tokens de acceso reales)
+tmp/cache/
+
+# Scripts con contraseñas/API keys de clientes embebidas en el código
+Boletin/notificaciones.php
+Scripts-Gestion/listado-tiendas.php
+Scripts-Gestion/listado-tiendas_antiguo.php
+Scripts-Gestion/comparador_precios.php
+nueva_accion_crm_2.php
+nueva_accion_crm_2.php.bk

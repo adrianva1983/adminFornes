@@ -1,0 +1,139 @@
+<?php
+  // No almacenar en el cache del navegador esta página.
+		header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");             		// Expira en fecha pasada
+		header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");		// Siempre página modificada
+		header("Cache-Control: no-cache, must-revalidate");           		// HTTP/1.1
+		header("Pragma: no-cache");                                   		// HTTP/1.0
+require($_SERVER['DOCUMENT_ROOT']."/administra/Interface/conexion.php");
+$requete = "SELECT * FROM `Servidor` WHERE `Tipo`='Estilos'";
+
+$estilos = array();
+if ($result = mysqli_query($db, $requete))
+{
+	while ($listado = mysqli_fetch_object($result))
+	{
+		$estilos[$listado->Campo]=$listado->Valor;
+	}
+}
+if (isset($_SESSION['usuario_login'])&&$_SESSION['usuario_login']!="") session_destroy();
+?>
+
+<html>
+<title>Zona Privada</title>
+<style type="text/css">
+<!--
+<?php
+print ".botones{\n";
+print "font-family:Arial,Helvetica,sans-serif;";
+print "font-size: 20px;";
+print "background-color:".$estilos["FONDO1"].";\n";
+print "color:".$estilos["FONDO1-FUENTE"].";";
+print "border:1px;";
+print "border-radius:5px;";
+print "}\n";
+print ".imputbox {\n";
+print "font-size: 20px;";
+print "color:#000000;";
+print "background-color:#CCCCCC;";
+print "border: 1px #000000 solid;";
+print "font-weight: normal;";
+print "}\n";
+?>
+-->
+</style>
+
+<body bgcolor="#FFFFFF">
+<span class="botones"></span><span class="imputbox"></span>
+<?php print "<table style=\"border-radius:20px;border:2px solid ".$estilos["FONDO1"].";\" width=\"500\" cellspacing=\"0\" cellpadding=\"0\" align=\"center\">"; ?>
+	<tr><td>
+<table width="500" border="0" cellspacing="0" cellpadding="0" align="center" bordercolor="#000000">
+        <form action="Interface/administra.php" method="post">
+          <tr>
+          	<?php
+          		print "<td colspan=\"2\"><div align=\"center\" style=\"margin: 5px;\"><img src=\"../estilos/images/logo.png\"/></div></td>";
+          	?>
+          </tr>
+      <?php 
+      	print "<tr bgcolor=\"".$estilos["FONDO1"]."\">";
+      	print "<td height=\"45\" colspan=\"2\" bgcolor=\"".$estilos["FONDO1"]."\">";
+      	print "<div align=\"center\"><font color=\"".$estilos["FONDO1-FUENTE"]."\" size=6><b>Zona de Administración</b><br></font>";
+      ?>
+                </div>
+            </td>
+          </tr>
+          <?php print "<tr bgcolor=\"".$estilos["FONDO2"]."\">"; ?>
+          	<td><div align="center"><img src="Imagenes/acceso.png"/></td></div>
+            <td>
+              <div align="center">
+                <table width="100%" border="0" cellspacing="0" cellpadding="5">
+                  <tr valign="middle">
+                    <td colspan="2" height="30">
+                      <div align="center">
+
+                         <?php
+                          // Mostrar error de Autentificación.
+                          include ("Permisos/aut_mensaje_error.inc.php");
+                          if (isset($_GET['error_login'])){
+                              $error=$_GET['error_login'];
+                          echo "<font face='Verdana, Arial, Helvetica, sans-serif' size='1' color='#FF0000'>Error: $error_login_ms[$error]";
+                          }
+                         ?>
+
+                    </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td width="39%">
+            <?php
+            print "<div align=\"right\"><font size=\"6\" color=\"#000000\">Usuario: </font></div>";
+            ?>
+                    </td>
+                    <td width="61%">
+                      <div align="left">
+                        <input type="text" name="user" size="25" class="imputbox">
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td width="39%">
+             <?php
+             print "<div align=\"right\"><font size=\"6\" color=\"#000000\">Password: </font></div>";
+             ?>
+                    </td>
+                    <td width="61%">
+                      <div align="left">
+                        <input type="password" name="pass" size="25" class="imputbox">
+                      </div>
+                    </td>
+                  </tr>
+		<?php
+$requete = "SELECT * FROM `Idiomas` WHERE `Activado-Administracion`='si' ORDER BY `Orden`";
+
+if ($result = mysqli_query($db, $requete))
+{
+	print "<tr><td width=\"39%\"><div align=\"right\"><font size=\"6\" color=\"#000000\">Idioma: </font></div></td><td width=\"61%\"><div align=\"left\">";
+	print "<select id=\"idioma\" name=\"idioma\">";
+	while ($listado = mysqli_fetch_object($result))
+	{
+		print "<option value=\"".$listado->Codigo."\">".$listado->Descripcion."</option>";		
+	}
+	print "</select></div></td></tr>";
+}
+		require($_SERVER['DOCUMENT_ROOT']."/administra/Interface/cierre.php");
+		?>
+                </table>
+              </div>
+            </td>
+          </tr>
+          <tr valign="middle">
+            <td colspan="2" height="50">
+              <div align="center"><font face="Arial" color=black>
+                <input name=submit type=submit value="  Entrar  " class="botones">
+                </font></div>
+            </td>
+          </tr>
+        </form>
+</table>
+</td></tr></table>
+</body>
+</html>

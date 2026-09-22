@@ -1,0 +1,704 @@
+<?php
+$id_usuario = $_GET['id_usuario'];
+$hash = $_GET['hash'];
+if ($_GET["servicio"]==1)
+{
+	require($_SERVER['DOCUMENT_ROOT']."/administra/Interface/conexion.php");
+	$loginOK = true;
+	//Nos aseguramos de que no nos suplantan al usuario
+	$requete = "SELECT * FROM `Usuarios` WHERE `Id`= ".$id_usuario;	
+	
+	if ($result = mysqli_query($db, $requete))
+	{
+		$listado = mysqli_fetch_object($result);
+		if (md5($listado->FechaUltimoAcceso.$id_usuario)!=$hash)
+		{
+			$resultados["mensaje"] = "Fallo sistema seguridad";
+			$resultados["validacion"] = "error";
+			$loginOK = false;			
+		}
+	}
+	else 
+	{
+		$resultados["mensaje"] = "Usuario inexistente";
+		$resultados["validacion"] = "error";
+		$loginOK = false;
+	}
+	require($_SERVER['DOCUMENT_ROOT']."/administra/Interface/cierre.php");
+	$formato = "JOSON";
+}
+else
+{
+	echo '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/1999/REC-html401-19991224/strict.dtd">
+	<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+		<meta name="robots" content="no-index">
+		<script type="text/javascript" src="/js/jquery/jquery-1.11.0.min.js"></script>
+		<script src="//code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+		<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css">
+		<title>Solicitud</title>
+	</head>
+	';
+	if (($_REQUEST['cod'])!="MuchisimaSuerte") 
+	{
+		print "<form action=\"/administra/Scripts-Gestion/listado-tiendas.php\" enctype=\"multipart/form-data\" method=\"POST\">";
+		print "<input type=\"hidden\" id=\"formato\" name=\"formato\" value=\"listado\">";	
+		print "<ul>";
+		print "<li><label for=\"cod\">Contraseña: </label><input type=\"text\" name=\"cod\" value=\"\"></li>";
+		print "<li><label for=\"fecha1\">Fecha1 (aaaa-mm-dd): </label><input id=\"fecha1\" name=\"fecha1\" type=\"text\"></li>";
+		print "<li><label for=\"fecha2\">Fecha2 (aaaa-mm-dd): </label><input id=\"fecha2\" name=\"fecha2\" type=\"text\"></li>";
+		print "<li><label for=\"desglosado\">Desglosado: </label><select name=\"desglosado\" id=\"desglosado\"><option>no</option><option value=\"si\">sí</option></select></li>";
+		print "<li><input class=\"boton\" type=\"submit\" name=\"submit\" id=\"submit\" value=\"Siguiente\"></li>";
+		print "</ul>";
+		print "</form>";	
+		exit();
+	}
+}
+if ($_REQUEST['listado_tiendas']==1||$_GET["servicio"]==1)
+{	
+	$arrayTemp=null;
+	$arrayTemp["Tienda"] = utf8_encode("Todas");
+	$output[0]= $arrayTemp;
+	$arrayTemp=null;
+	$arrayTemp["Tienda"] = utf8_encode("Asturias.com");
+	$output[1]= $arrayTemp;
+	$arrayTemp=null;
+	$arrayTemp["Tienda"]=utf8_encode("Bellepro");
+	$output[2]= $arrayTemp;
+	$arrayTemp=null;
+	$arrayTemp["Tienda"]=utf8_encode("Homethings");
+	$output[3]= $arrayTemp;	
+	$arrayTemp=null;
+	$arrayTemp["Tienda"]=utf8_encode("Delicatessen Antonio");
+	$output[4]= $arrayTemp;	
+	$arrayTemp=null;
+	$arrayTemp["Tienda"]=utf8_encode("Dietético Astur");
+	$output[5]= $arrayTemp;	
+	$arrayTemp=null;
+	$arrayTemp["Tienda"]=utf8_encode("Las Espinacas de Popeye");
+	$output[6]= $arrayTemp;	
+	$arrayTemp=null;
+	//$arrayTemp["Tienda"]=utf8_encode("Galería Esculturas");
+	//$output[6]= $arrayTemp;	
+	//$arrayTemp=null;
+	$arrayTemp["Tienda"]=utf8_encode("Motor Manía");
+	$output[7]= $arrayTemp;	
+	$arrayTemp=null;
+	$arrayTemp["Tienda"]=utf8_encode("Ortoespacio");
+	$output[8]= $arrayTemp;	
+	$arrayTemp=null;
+	$arrayTemp["Tienda"]=utf8_encode("Unión Ferretera");
+	$output[9]= $arrayTemp;	
+	$arrayTemp=null;
+	$arrayTemp["Tienda"]=utf8_encode("Espacio Natur");
+	$output[9]= $arrayTemp;
+	print(json_encode($output));
+	exit;
+}
+$numOutputs = 0;
+$ventas = 0;
+$comisiones = 0;
+$comisiones_excepcion1 = 0;
+$comisiones_excepcion2 = 0;
+$comisiones_excepcion3 = 0;
+$total_ventas = 0;
+$total_comisiones = 0;
+global $db;
+$db= mysql_connect("localhost", "delicatessen", "comprar1libro");
+mysql_select_db("delicatessen_tienda");
+$requete = "SELECT SUM(total_price_tax_excl) AS total FROM ps_orders,ps_order_detail WHERE ps_orders.id_order=ps_order_detail.id_order AND ps_order_detail.product_id<>8 AND ps_order_detail.product_id<>9 AND ps_order_detail.product_id<>10 AND ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "ps_orders.valid=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.05;
+	$total_ventas+=$ventas;
+	$total_comisiones+=$comisiones;
+}
+$requete = "SELECT SUM(ps_order_detail.product_quantity) AS total FROM ps_orders,ps_order_detail WHERE ps_orders.id_order=ps_order_detail.id_order AND ps_order_detail.product_id=8 AND ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "ps_orders.valid=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $num_excepcion1 = $listado->total;
+	$comisiones_excepcion1 = $num_excepcion1 * 0.9;	
+}
+$requete = "SELECT SUM(ps_order_detail.product_quantity) AS total FROM ps_orders,ps_order_detail WHERE ps_orders.id_order=ps_order_detail.id_order AND ps_order_detail.product_id=9 AND ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="`date_add`>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "ps_orders.valid=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $num_excepcion2 = $listado->total;
+	$comisiones_excepcion2 = $num_excepcion2 * 1.4;
+}
+$requete = "SELECT SUM(ps_order_detail.product_quantity) AS total FROM ps_orders,ps_order_detail WHERE ps_orders.id_order=ps_order_detail.id_order AND ps_order_detail.product_id=10 AND ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "ps_orders.valid=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $num_excepcion3 = $listado->total;
+	$comisiones_excepcion3 = $num_excepcion3 * 4.5;
+}
+
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Delicatessen Antonio");
+$arrayTemp["Icono"] = utf8_encode("http://www.delicatessenantonio.es/img/logo_stores-1.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+$arrayTemp["Num Moet Chandon"] = $num_excepcion1;
+$arrayTemp["Moet Chandon"] = $comisiones_excepcion1;
+$arrayTemp["Num Moet Chandon Rose"] = $num_excepcion2;
+$arrayTemp["Moet Chandon Rose"] = $comisiones_excepcion2;
+$arrayTemp["Num Dom Perignon"] = $num_excepcion3;
+$arrayTemp["Dom Perignon"] = $comisiones_excepcion3;
+
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']=="Delicatessen Antonio")) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+//----------------------
+$db= mysql_connect("localhost", "dieteticoastur", "comprar1libro");
+mysql_select_db("dieteticoastur");
+$ventas = 0;
+$comisiones = 0;
+$requete = "SELECT SUM(total_products) AS total FROM ps_orders WHERE ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "`valid`=1";
+
+if ($result = mysqli_query($db, $requete))
+{	
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.06;
+	$total_ventas+=$ventas;
+	$total_comisiones+=$comisiones;
+}
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Dietético Astur");
+$arrayTemp["Icono"] = utf8_encode("http://www.dieteticoastur.com/img/logo_stores-1.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']==utf8_encode("Dietético Astur"))) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+//----------------------
+$db= mysql_connect("localhost", "homethings", "comprar1libro");
+mysql_select_db("homethings");
+$ventas = 0;
+$comisiones = 0;
+$requete = "SELECT SUM(total_products) AS total FROM ps_orders WHERE ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "`valid`=1";
+
+if ($result = mysqli_query($db, $requete))
+{	
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.03;
+	$total_ventas+=$ventas;
+	$total_comisiones+=$comisiones;
+}
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Home Things");
+$arrayTemp["Icono"] = utf8_encode("http://www.homethings.es/img/logo_stores.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']==utf8_encode("Home Things"))) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+//----------------------
+$db= mysql_connect("localhost", "unionferretera", "comprar1libro");
+mysql_select_db("unionferretera");
+$ventas = 0;
+$comisiones = 0;
+$requete = "SELECT SUM(total_products) AS total FROM ps_orders WHERE ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "`valid`=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$i=0;
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.05;
+	$total_ventas+=$ventas;
+	$total_comisiones+=$comisiones;
+}
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Unión Ferretera");
+$arrayTemp["Icono"] = utf8_encode("http://www.unionferretera.com/img/logo_stores-1.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+if ($_REQUEST['desglosado']=="si")
+{
+	$requete = "SELECT id_order,reference,total_products FROM ps_orders WHERE ";
+	if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+	else
+	{
+		if (isset($_REQUEST['fecha1'])) 
+		{
+			$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+		}
+		if (isset($_REQUEST['fecha2'])) 
+		{
+			$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+		}
+	}
+	$requete.= "`valid`=1";	
+	
+	if ($result = mysqli_query($db, $requete))
+	{
+		$arrayTemp["Desglose"] = "<h2>Desglose de pedidos:</h2><table border=\"1px\" cellpadding=\"0\" cellspacin=\"0\"><tr><th>Id Pedido</th><th>Referencia</th><th>Total BI productos</th></tr>";
+		$total_periodo = 0;
+		while ($listado = mysqli_fetch_object($result))
+		{			
+			$arrayTemp["Desglose"] .= "<tr>";
+			$arrayTemp["Desglose"] .= "<td>".$listado->id_order."</td><td>".$listado->reference."</td><td>".$listado->total_products."</td>";
+			$total_periodo += $listado->total_products;
+			$arrayTemp["Desglose"] .= "</tr>";
+		}
+		$arrayTemp["Desglose"] .= "<tr><th></th><th>Total:</th><th>".$total_periodo."</th></tr>";		
+		$arrayTemp["Desglose"] .= "</table>";
+	}
+}
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']==utf8_encode("Unión Ferretera"))) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+//----------------------
+$db= mysql_connect("localhost", "lasespinacas", "comprar1libro");
+mysql_select_db("lasespinacasdepopeye");
+$ventas = 0;
+$comisiones = 0;
+$requete = "SELECT SUM(total_products) AS total FROM ps_orders WHERE ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "`valid`=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$i=0;
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.05;
+	$total_comisiones+=$comisiones;
+	$total_ventas+=$ventas;
+}
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Las Espinacas de Popeye");
+$arrayTemp["Icono"] = utf8_encode("http://www.lasespinacasdepopeye.com/img/las-espinacas-de-popeye-1396427403.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']==utf8_encode("Las Espinacas de Popeye"))) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+//----------------------
+/*
+$db= mysql_connect("localhost", "esculturas2012", "comprar1libro");
+mysql_select_db("esculturas2012");
+$ventas = 0;
+$comisiones = 0;
+$requete = "SELECT SUM(total_products) AS total FROM ps_orders WHERE ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "`valid`=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$i=0;
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.07;
+	$total_comisiones+=$comisiones;
+	$total_ventas+=$ventas;
+}
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Galería Esculturas");
+$arrayTemp["Icono"] = utf8_encode("http://www.galeriaesculturas.es/img/logo_stores-1.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']==utf8_encode("Galería Esculturas"))) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+*/
+//----------------------
+$db= mysql_connect("localhost", "ortoespacio", "comprar1libro");
+mysql_select_db("ortoespacio");
+$ventas = 0;
+$comisiones = 0;
+$requete = "SELECT SUM(total_products) AS total FROM ps_orders WHERE ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "`valid`=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$i=0;
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.03;
+	$total_comisiones+=$comisiones;
+	$total_ventas+=$ventas;
+}
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Ortoespacio");
+$arrayTemp["Icono"] = utf8_encode("http://www.ortoespacio.com/img/logo_stores.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']==utf8_encode("Ortoespacio"))) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+//----------------------
+$db= mysql_connect("localhost", "motormaniaonline", "comprar1libro");
+mysql_select_db("motormaniaonline");
+$ventas = 0;
+$comisiones = 0;
+$requete = "SELECT SUM(total_products) AS total FROM ps_orders WHERE ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "`valid`=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$i=0;
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.05;
+	$total_comisiones+=$comisiones;
+	$total_ventas+=$ventas;
+}
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Motormanía");
+$arrayTemp["Icono"] = utf8_encode("http://www.motormaniaonline.com/img/logo_stores-1.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']==utf8_encode("Motormanía"))) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+//----------------------
+$db= mysql_connect("localhost", "bellepro_es", "comprar1libro");
+mysql_select_db("bellepro_es");
+$ventas = 0;
+$comisiones = 0;
+$requete = "SELECT SUM(total_products) AS total FROM ps_orders WHERE ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "`valid`=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$i=0;
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.05;
+	$total_comisiones+=$comisiones;
+	$total_ventas+=$ventas;
+}
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Bellepro");
+$arrayTemp["Icono"] = utf8_encode("http://es.bellepro.eu/img/logo_stores-1.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']==utf8_encode("Bellepro"))) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+//----------------------
+$db= mysql_connect("localhost", "espacionatur", "comprar1libro");
+mysql_select_db("espacionatur");
+$ventas = 0;
+$comisiones = 0;
+$requete = "SELECT SUM(total_products) AS total FROM ps_orders WHERE ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "`valid`=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$i=0;
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.04;
+	$total_comisiones+=$comisiones;
+	$total_ventas+=$ventas;
+}
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Espacionatur");
+$arrayTemp["Icono"] = utf8_encode("http://www.espacionatur.com/img/logo_stores.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']==utf8_encode("Espacionatur"))) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+//----------------------
+$db= mysql_connect("localhost", "bleuetblanc", "comprar1libro");
+mysql_select_db("bleuetblanc");
+$ventas = 0;
+$comisiones = 0;
+$requete = "SELECT SUM(total_products) AS total FROM ps_orders WHERE ";
+if (!isset($_REQUEST['total'])&&!isset($_REQUEST['fecha1'])&&!isset($_REQUEST['fecha2'])) $requete.="ps_orders.date_add>='".date("Y")."-".date("m")."-01 00:00:01' AND ";
+else
+{
+	if (isset($_REQUEST['fecha1'])) 
+	{
+		$requete.="ps_orders.date_add>='".$_REQUEST['fecha1']." 00:00:01' AND ";		
+	}
+	if (isset($_REQUEST['fecha2'])) 
+	{
+		$requete.="ps_orders.date_add<='".$_REQUEST['fecha2']." 23:59:59' AND ";		
+	}
+}
+$requete.= "`valid`=1";
+
+if ($result = mysqli_query($db, $requete))
+{
+	$i=0;
+	$listado = mysqli_fetch_object($result);
+	if ($listado->total!=null) $ventas = $listado->total;
+	$comisiones = $ventas * 0.05;
+	$total_comisiones+=$comisiones;
+	$total_ventas+=$ventas;
+}
+$arrayTemp=null;
+$arrayTemp["Tienda"] = utf8_encode("Bleu et blanc");
+$arrayTemp["Icono"] = utf8_encode("http://www.bleuetblanc.es/img/bleu-et-blanc-1409927775.gif");
+$arrayTemp["Ventas"] = $ventas;
+$arrayTemp["Comisiones"] = $comisiones;
+if (($_REQUEST['proyecto']=="")||($_REQUEST['proyecto']==utf8_encode("Bleu et Blanc"))) 
+{
+	$output[$numOutputs] = $arrayTemp;
+	$numOutputs++;
+}
+$db = mysql_close($db);
+//----------------------
+/*
+$requete = $_REQUEST['SQLActualizacion'];
+$requete = str_replace("\\'","'",$requete);
+$requete = str_replace("\\\"","",$requete);
+
+if ($result = mysqli_query($db, $requete))
+{
+	$i=0;
+	while ($listado = mysqli_fetch_object($result))
+	{
+		$arrayTemp= null;
+		foreach($listado as $key => $value)
+		{
+			if (!is_null($value)) $arrayTemp[$key] = utf8_encode($value);
+			else $arrayTemp[$key]=$value;
+		}		
+		$output[$i]=$arrayTemp;
+		$i++;
+	}
+	print(json_encode($output));
+}
+require("cierre.php");
+*/
+if ($formato!="listado") 
+{
+	if ($loginOK) print(json_encode($output));	
+}
+else
+{
+	print "<table border=\"1px\">";
+	for ($i=0;$i<count($output);$i++)
+	{
+		print "<tr>";
+		print "<th>".htmlentities(utf8_decode($output[$i]["Tienda"]))."</th>";
+		print "<td><img src=\"".$output[$i]["Icono"]."\" width=\"50px\"></td>";
+		print "<td>Ventas: ".$output[$i]["Ventas"]."</td>";
+		print "<td>Comisiones: ".$output[$i]["Comisiones"]."</td>";
+		print "</tr>";
+	}
+	print "<tr><td>&nbsp;</td><td>&nbsp;</td><td><strong>TOTAL VENTAS:".$total_ventas."</strong></td><td><strong>TOTAL COMISIONES:".$total_comisiones."</td></tr>";
+	print "</table>";
+	if ($_REQUEST['desglosado']=="si")
+	{
+		print "<hr/>";
+		for ($i=0;$i<count($output);$i++)
+		{
+			print "<h1>".htmlentities(utf8_decode($output[$i]["Tienda"]))."</h1>";
+			print $output[$i]["Desglose"];
+		}
+	}
+}
+if ($_GET["servicio"]!=1)
+{
+	echo'</body></html>';
+}
+?>

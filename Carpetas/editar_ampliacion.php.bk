@@ -1,0 +1,302 @@
+<?php
+//VERSIÓN: v1.0 2013-10-28
+//COMPATIBLE PHP 5.5
+//DEFINICIÓN VARIABLES
+$ampliacion = $_GET["ampliacion"];
+$contenido = $_GET["contenido"];
+$ruta = $_GET["ruta"];
+$seccion = $_GET["seccion"];
+$idampliacion = $_GET["idampliacion"];
+//COMPROBAMOS EL NIVEL DE ACCESO
+require($_SERVER['DOCUMENT_ROOT']."/administra/Permisos/aut_verifica.inc.php");
+$nivel_acceso=4; // Nivel de acceso para esta página.
+// NIVEL MÍNIMO RESPONSABLE
+if ($nivel_acceso <= $_SESSION['usuario_nivel'])
+{
+	print "<p class=\"mensajeKO\">".$lang["errorPermisos"]."</p>";
+	exit;
+}
+if ($_SERVER['HTTP_REFERER'] == ""){
+	die ("<p class=\"mensajeKO\">".$lang["accesoIncorrecto"]."</p>");
+	exit;
+}
+// CARGA DE EDITOR DE TEXTO
+$javascript_onready .= "
+	tinyMCE.init({
+		mode : 'exact',
+		width : '90%',
+		elements : 'Texto',";
+if ($_SESSION['idioma'] == "ES-ES") $javascript_onready.="		language: 'es',";
+$javascript_onready.="
+		plugins: [
+			'advlist autolink link image lists charmap print preview hr anchor pagebreak spellchecker',
+			'searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking',
+			'save table contextmenu directionality emoticons template paste textcolor'			
+			],
+		toolbar: 'styleselect | bold italic | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image'
+		
+	});";
+$javascript_onready .= "
+	$(function() 
+	{
+		$('#fechaComienzo' ).datepicker({format: 'yyyy-mm-dd',language:'es-ES'});
+	});
+	$(function() 
+	{
+		$( '#fechaFin' ).datepicker({format: 'yyyy-mm-dd'});
+	});
+	";
+//Cargamos el idioma
+require($_SERVER['DOCUMENT_ROOT']."/administra/Carpetas/idiomas/amplia_contenido-".$_SESSION['idioma'].".conf");
+$requete = "SELECT * FROM `Contenidos` WHERE `Id`=".$idampliacion;
+
+$listado = mysqli_fetch_object($result);
+print '<div class="row"><div class="col-lg-12"><div class="ibox float-e-margins"><div class="ibox-title"><h5>'.$lang['titulo_amplia_contenido_editar'].'</h5><div class="ibox-tools"><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></div><div class="ibox-content">';
+print "<form id=\"formulario_amplia_contenido\" action=\"/administra/Carpetas/editar_ampliacion_2.php\" enctype=\"multipart/form-data\" method=\"POST\" class=\"form-horizontal\">";
+switch ($ampliacion) 
+{
+	case "texto":
+		print "<input name=\"ampliacion\" type=\"hidden\" value=\"".$ampliacion."\">";
+		print "<input name=\"idampliacion\" type=\"hidden\" value=\"".$idampliacion."\">";
+		print "<input name=\"contenido\" type=\"hidden\" value=\"".$contenido."\">";
+
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Titulo\">".$lang["titulo"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Titulo\" name=\"Titulo\" type=\"text\" value=\"".$listado->Titulo."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Texto\">".$lang["texto"]."</label><div class='col-sm-10'><textarea required id=\"Texto\" name=\"Texto\" cols=\"94\" rows=\"30\" wrap=\"VIRTUAL\">".$listado->Breve."</textarea></div></div>";
+
+		if (isset($seccion)) print "<input name=\"seccion\" type=\"hidden\" value=\"".$seccion."\">";
+		if (isset($ruta)) print "<input name=\"ruta\" type=\"hidden\" value=\"".$ruta."\">";     
+	break;
+	case "imagen":
+		print "<input name=\"ampliacion\" type=\"hidden\" value=\"".$ampliacion."\">";
+		print "<input name=\"idampliacion\" type=\"hidden\" value=\"".$idampliacion."\">";
+		print "<input name=\"contenido\" type=\"hidden\" value=\"".$contenido."\">";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Titulo\">".$lang["titulo"].": </label><div class='col-sm-10'><input class=\"form-control\" required id=\"Titulo\" name=\"Titulo\" type=\"text\" value=\"".$listado->Titulo."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Foto\">".$lang["imagen"].": </label><div class='col-sm-10'>";
+		if ($listado->Foto!="") print "<img style=\"max-width:100%;\" src=\"/Imagenes/".$listado->Foto."\" width=\"".$listado->AnchoFoto."\"> ";
+		print "<input class=\"form-control\" id=\"Foto\" name=\"Foto\" type=\"file\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Alternativo\">".$lang["alternativo"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Alternativo\" name=\"Alternativo\" type=\"text\" value=\"".$listado->Alternativo."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Redireccionar\">".$lang["enlace"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Redireccionar\" name=\"Redireccionar\" type=\"text\" value=\"".$listado->Redireccionar."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"alineacion\">".$lang["alineacion"]."</label><div class='col-sm-10'>";
+		print "<div class='i-checks'><label><input ";
+		if ($listado->Breve=="izquierda") print "checked ";
+		print "type=\"radio\" name=\"alineacion\" value=\"izquierda\"><i></i> ".$lang["izquierda"]." <img style=\"vertical-align:middle;\" src=\"../Imagenes/image-izq.png\"/></label></div>";
+		print "<div class='i-checks'><label><input ";
+		if ($listado->Breve=="centrado") print "checked ";
+		print "type=\"radio\" name=\"alineacion\" value=\"centrado\"><i></i> ".$lang["centrado"]." <img style=\"vertical-align:middle;\" src=\"../Imagenes/image-cen.png\"/></label></div>";
+		print "<div class='i-checks'><label><input ";
+		if ($listado->Breve=="derecha") print "checked ";
+		print "type=\"radio\" name=\"alineacion\" value=\"derecha\"><i></i> ".$lang["derecha"]." <img style=\"vertical-align:middle;\" src=\"../Imagenes/image-der.png\"/></label></div></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Retocar\">".$lang["retocar"]."</label><div class='col-sm-10'><div class='i-checks'><label><input type=\"radio\" value=\"si\" name=\"Retocar\"><i></i> ".$lang["si"]."</label></div>";
+		print "<div class='i-checks'><label><input type=\"radio\" value=\"no\" name=\"Retocar\" checked><i></i> ".$lang["no"]."</label></div></div></div>";		
+		print "<div id=\"retocarImagen\">";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"AnchoFoto\">".$lang["anchoimagen"]."</label><div class='col-sm-4'><input class=\"form-control\" value=\"".$listado->AnchoFoto."\" id=\"AnchoFoto\" name=\"AnchoFoto\" size=\"4\"></div><label class='col-sm-2 control-label' for=\"AltoFoto\">".$lang["altoimagen"]."</label><div class='col-sm-4'><input class=\"form-control\" value=\"".$listado->AltoFoto."\" id=\"AltoFoto\" name=\"AltoFoto\" size=\"4\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"AnchoFoto2\">".$lang["anchoampliado"]."</label><div class='col-sm-4'><input class=\"form-control\" value=\"".$listado->AnchoFoto2."\" id=\"AnchoFoto2\" name=\"AnchoFoto2\" size=\"4\"></div><label class='col-sm-2 control-label' for=\"AltoFoto2\">".$lang["altoampliado"]."</label><div class='col-sm-4'><input class=\"form-control\" id=\"AltoFoto2\" value=\"".$listado->AltoFoto2."\" name=\"AltoFoto2\" size=\"4\"></div></div>";
+		print "</div>";          
+		if (isset($seccion)) print "<input name=\"seccion\" type=\"hidden\" value=\"".$seccion."\">";
+		if (isset($ruta)) print "<input name=\"ruta\" type=\"hidden\" value=\"".$ruta."\">";          
+	break;
+	case "enlace":
+		print "<input name=\"ampliacion\" type=\"hidden\" value=\"".$ampliacion."\">";
+		print "<input name=\"idampliacion\" type=\"hidden\" value=\"".$idampliacion."\">";
+		print "<input name=\"contenido\" type=\"hidden\" value=\"".$contenido."\">";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Titulo\">".$lang["titulo"]."</label><div class='col-sm-10'><input class=\"form-control\" required id=\"Titulo\" name=\"Titulo\" type=\"text\" value=\"".$listado->Titulo."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Redireccionar\">".$lang["enlace"]."</label><div class='col-sm-10'><input class=\"form-control\" required id=\"Redireccionar\" name=\"Redireccionar\" type=\"text\" value=\"".$listado->Redireccionar."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<input name=\"tipocontenido\" type=\"hidden\" value=\"".$tipocontenido."\">";		
+		if (isset($seccion)) print "<input name=\"seccion\" type=\"hidden\" value=\"".$seccion."\">";
+		if (isset($ruta)) print "<input name=\"ruta\" type=\"hidden\" value=\"".$ruta."\">";     
+	break;
+	case "fichero":
+		print "<input name=\"ampliacion\" type=\"hidden\" value=\"".$ampliacion."\">";
+		print "<input name=\"idampliacion\" type=\"hidden\" value=\"".$idampliacion."\">";
+		print "<input name=\"contenido\" type=\"hidden\" value=\"".$contenido."\">"; 
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Titulo\">".$lang["titulo"]."</label><div class='col-sm-10'><input class=\"form-control\" required id=\"Titulo\" name=\"Titulo\" type=\"text\" value=\"".$listado->Titulo."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Fichero\">".$lang["fichero"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Fichero\" name=\"Fichero\" type=\"file\"></div></div>";		
+		if (isset($seccion)) print "<input name=\"seccion\" type=\"hidden\" value=\"".$seccion."\">";
+		if (isset($ruta)) print "<input name=\"ruta\" type=\"hidden\" value=\"".$ruta."\">";     
+	break;
+	case "video":
+		print "<input name=\"ampliacion\" type=\"hidden\" value=\"".$ampliacion."\">";
+		print "<input name=\"idampliacion\" type=\"hidden\" value=\"".$idampliacion."\">";
+		print "<input name=\"contenido\" type=\"hidden\" value=\"".$contenido."\">";
+		print "<script>
+		function mostrar()
+		{
+			elemento = \$('#TipoReproduccion').val();
+			if (elemento=='servidor')
+			{
+				\$('#videoExterno').fadeOut();
+				\$('#videoServidor1').fadeIn();
+				\$('#videoServidor2').fadeIn();
+			}
+			if ((elemento=='youtube')||(elemento=='vimeo'))
+			{
+				\$('#videoExterno').fadeIn();
+				\$('#videoServidor1').fadeOut();
+				\$('#videoServidor2').fadeOut();
+			}
+		}</script>";		
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Titulo\">".$lang["titulo"]."</label><div class='col-sm-10'><input class=\"form-control\" required id=\"Titulo\" name=\"Titulo\" type=\"text\" value=\"".$listado->Titulo."\" size=\"50\" maxlength=\"255\"></div></div>";
+		$datosTMP = explode("::",$listado->Redireccionar);
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"TipoRepredoccion\">".$lang["tipoReproduccion"]."</label><div class='col-sm-10'><select class=\"form-control\" name=\"TipoReproduccion\" id=\"TipoReproduccion\" onChange=\"mostrar();\">";
+		print "<option value=\"youtube\"";
+		if ($datosTMP[0]=="youtube") print " selected";
+		print ">".$lang["youtube"]."</option>";
+		print "<option value=\"vimeo\"";
+		if ($datosTMP[0]=="vimeo") print " selected";
+		print ">".$lang["vimeo"]."</option>";
+		print "<option value=\"servidor\"";
+		if ($datosTMP[0]=="servidor") print " selected";
+		print ">".$lang["servidor"]."</option>";
+		print "</select></div></div>";
+		print "<div id=\"videoExterno\"";
+		if  (($datosTMP[0]!="vimeo")&&($datosTMP[0]!="youtube")) print " style=\"display:none\"";
+		print "><div class='form-group'><label class='col-sm-2 control-label' for=\"VideoId\">".$lang["idVideoExterno"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"VideoId\" name=\"VideoId\" type=\"text\" value=\"".$datosTMP[1]."\" size=\"50\" maxlength=\"255\"></div></div></div>";
+		print "<div";
+		if ($datosTMP[0]!="servidor") print " style=\"display:none\"";
+		print " id=\"videoServidor1\"><div class='form-group'><label class='col-sm-2 control-label' for=\"FicheroServidor\">".$lang["video"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"FicheroServidor\" name=\"FicheroServidor\" type=\"text\" value=\"".$listado->Recurso."\" size=\"50\" maxlength=\"255\"></div></div></div>";
+		print "<div";
+		if ($datosTMP[0]!="servidor") print " style=\"display:none\"";
+		print " id=\"videoServidor2\"><div class='form-group'><label class='col-sm-2 control-label' for=\"Fichero\">".$lang["videofichero"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Fichero\" name=\"Fichero\" type=\"file\"></div></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"AnchoFoto\">".$lang["anchovideo"]."</label><div class='col-sm-4'><input class=\"form-control\" id=\"AnchoFoto\" name=\"AnchoFoto\" value=\"".$listado->AnchoFoto."\" size=\"4\"></div><label class='col-sm-2 control-label' for=\"AltoFoto\"> ".$lang["altovideo"]."</label><div class='col-sm-4'><input class=\"form-control\" id=\"AltoFoto\" value=\"".$listado->AltoFoto."\" name=\"AltoFoto\" size=\"4\"></div></div>";
+		if (isset($seccion)) print "<input name=\"seccion\" type=\"hidden\" value=\"".$seccion."\">";
+		if (isset($ruta)) print "<input name=\"ruta\" type=\"hidden\" value=\"".$ruta."\">";     
+	break;
+	case "mapa":
+		print "<input name=\"ampliacion\" type=\"hidden\" value=\"".$ampliacion."\">";
+		print "<input name=\"idampliacion\" type=\"hidden\" value=\"".$idampliacion."\">";
+		print "<input name=\"contenido\" type=\"hidden\" value=\"".$contenido."\">";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Titulo\">".$lang["titulo"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Titulo\" required name=\"Titulo\" type=\"text\" value=\"$listado->Titulo\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Latitud\">".$lang["latitud"]."</label><div class='col-sm-4'><input class=\"form-control\" value=\"".$listado->AnchoFoto2."\" id=\"Latitud\" name=\"Latitud\" size=\"8\"></div><label class='col-sm-2 control-label' for=\"Longitud\"> ".$lang["longitud"]."</label><div class='col-sm-4'><input class=\"form-control\" value=\"".$listado->AltoFoto2."\" id=\"Longitud\" name=\"Longitud\" size=\"8\"></div></div>";
+		if (isset($seccion)) print "<input name=\"seccion\" type=\"hidden\" value=\"".$seccion."\">";
+		if (isset($ruta)) print "<input name=\"ruta\" type=\"hidden\" value=\"".$ruta."\">";     
+	break;
+ 	case "ruta":
+		print "<input name=\"ampliacion\" type=\"hidden\" value=\"".$ampliacion."\">";
+		print "<input name=\"contenido\" type=\"hidden\" value=\"".$contenido."\">";     
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Titulo\">".$lang["titulo"]."</label><div class='col-sm-10'><input id=\"Titulo\" required class=\"form-control\" name=\"Titulo\" type=\"text\" value=\"".$listado->Titulo."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label'>".$lang["centro"]."</label><div class='col-sm-5'><input class=\"form-control\" id=\"Latitud\" placeholder=\"".$lang["latitud"]."\" name=\"Latitud\" size=\"8\" value=\"".$listado->AnchoFoto2."\"></div><div class='col-sm-5'><input class=\"form-control\" id=\"Longitud\" placeholder=\"".$lang["longitud"]."\" name=\"Longitud\" size=\"8\" value=\"".$listado->AltoFoto2."\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Zoom\">".$lang["zoom"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Zoom\" name=\"Zoom\" size=\"2\" value=\"".$listado->Breve."\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Fichero\">".$lang["kml"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Fichero\" name=\"Fichero\" type=\"file\"></div></div>";     
+		if (isset($seccion)) print "<input name=\"seccion\" type=\"hidden\" value=\"".$seccion."\">";
+		if (isset($ruta)) print "<input name=\"ruta\" type=\"hidden\" value=\"".$ruta."\">";     
+		break;
+	case "foro":
+		print "<input name=\"ampliacion\" type=\"hidden\" value=\"".$ampliacion."\">";
+		print "<input name=\"idampliacion\" type=\"hidden\" value=\"".$idampliacion."\">";
+		print "<input name=\"contenido\" type=\"hidden\" value=\"".$contenido."\">";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Titulo\">".$lang["titulo"]."</label><div class='col-sm-10'><input class=\"form-control\" required id=\"Titulo\" name=\"Titulo\" type=\"text\" value=\"".$listado->Titulo."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Texto\">".$lang["texto"]." </label><div class='col-sm-10'><textarea id=\"Texto\" name=\"Texto\" cols=\"60\" rows=\"10\" wrap=\"VIRTUAL\">".$listado->Breve."</textarea></div></div>";
+		//print "<li><label for=\"URLAmigable\">".$lang["urlamigable"].": </label><input id=\"URLAmigable\" name=\"URLAmigable\" type=\"text\" value=\"".$listado->URLAmigable."\" size=\"50\" maxlength=\"255\"></li>";		
+		$requete2 = "SELECT * FROM `ForoConfiguracion` WHERE `Id`='".$idampliacion."'";
+		
+		$listado2 = mysqli_fetch_object($result2);
+		print "<div class='form-group'><label class='col-sm-2 control-label'>".$lang["configuraciones_foro"]."</label><div class='col-sm-10'>";
+		print "<div class='col-sm-4'><div class='i-checks'><label><input id=\"Validacion\"";
+		if ($listado2->Validacion=="si") print " checked";
+		print " name=\"Validacion\" type=\"checkbox\" value=\"Validacion\"><i></i> ".$lang["exigirvalidar"]."</label></div></div>";
+		print "<div class='col-sm-4'><div class='i-checks'><label><input id=\"Aviso\"";
+		if ($listado2->EnvioAviso=="si") print " checked";
+		print " name=\"Aviso\" type=\"checkbox\" value=\"Aviso\"><i></i> ".$lang["enviaraviso"]."</label></div></div>";
+		print "<div class='col-sm-4'><div class='i-checks'><label><input id=\"AvisoEmail\"";
+		if ($listado2->CorreoAviso=="si") print " checked";
+		print " name=\"AvisoEmail\" type=\"checkbox\" value=\"AvisoEmail\"><i></i> ".$lang["enviaraviso2"]."</label></div></div>";
+		print "<div class='col-sm-4'><div class='i-checks'><label><input id=\"Votacion\"";
+		if ($listado2->Votacion=="si") print " checked";
+		print " name=\"Votacion\" type=\"checkbox\" value=\"Votacion\"><i></i> ".$lang["votacion"]."</label></div></div>";
+		print "<div class='col-sm-4'><div class='i-checks'><label><input id=\"Busqueda\"";
+		if ($listado2->BusquedaMensajes=="si") print " checked";
+		print " name=\"Busqueda\" type=\"checkbox\" value=\"Busqueda\"><i></i> ".$lang["busqueda"]."</label></div></div>";
+		print "<div class='col-sm-4'><div class='i-checks'><label><input";
+		if ($listado2->PermitirRespuestas=="si") print " checked";
+		print " id=\"Respuestas\" name=\"Respuestas\" type=\"checkbox\" value=\"Respuestas\"><i></i> ".$lang["respuestas"]."</label></div></div>";		
+		print "<div class='col-sm-4'><div class='i-checks'><label><input";
+		if ($listado2->Max1Mensaje=="si") print " checked";
+		print " id=\"Max1Mensaje\" name=\"Max1Mensaje\" type=\"checkbox\" value=\"Max1Mensaje\"><i></i> ".$lang["maximo1"]."</label></div></div>";
+		print "<div class='col-sm-4'><div class='i-checks'><label><input id=\"Anonimo\"";
+		if ($listado2->ForoAnonimoEscritura=="si") print " checked";
+		print " name=\"Anonimo\" type=\"checkbox\" value=\"Anonimo\"><i></i> ".$lang["anonimoescritura"]."</label></div></div>";
+		print "<div class='col-sm-4'><div class='i-checks'><label><input id=\"LecturaAnonimo\"";
+		if ($listado2->ForoAnonimoLectura=="si") print " checked";
+		print " name=\"LecturaAnonimo\" type=\"checkbox\" value=\"Anonimo\"><i></i> ".$lang["anonimolectura"]."</label></div></div>";
+		print "</div></div>";
+		$requete = "SELECT * FROM `NivelesPermisos` WHERE Idioma='".$_SESSION['idioma']."' ORDER BY `Nivel`";
+		$result2 = mysqli_query($db,$requete);
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"NivelEscritura\">".$lang["nivelescritura"].":</label>";
+		if ($listado2->NivelEscritura>=$_SESSION['usuario_nivel'])
+		{ 
+			$requete = "SELECT * FROM `NivelesPermisos` ORDER BY `Nivel`";
+			$result3 = mysqli_query($db,$requete);
+			print "<div class='col-sm-10'><select class=\"form-control\" id=\"NivelEscritura\" name=\"NivelEscritura\">";		
+			while($listado2 = mysqli_fetch_object($result2))
+			{
+				if ($listado2->Nivel>=$_SESSION['usuario_nivel'])
+				{
+					print "<option value=\"".$listado2->Nivel."\"";
+					if ($listado3->Nivel == $listado2->NivelEscritura) print " selected";
+					print ">".$listado2->Nombre."</option>";
+				}
+			}
+			print "</select></div></div>";
+		}
+		else
+		{
+		   $requete = "SELECT * FROM `NivelesPermisos` WHERE `Nivel`='".$listado2->NivelEscritura."'";
+		   $result3 = mysqli_query($db,$requete);
+		   $listado3 = mysqli_fetch_object($result3);
+		   print "<div class='col-sm-10'>".$listado3->Nombre."</div></div>";
+		}
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"NivelLectura\">".$lang["nivellectura"].":</label>";
+		if ($listado2->NivelEscritura>=$_SESSION['usuario_nivel'])
+		{ 
+			$requete = "SELECT * FROM `NivelesPermisos` ORDER BY `Nivel`";
+			$result3 = mysqli_query($db,$requete);
+			print "<div class='col-sm-10'><select class=\"form-control\" id=\"NivelLectura\" name=\"NivelLectura\">";
+			$result2 = mysqli_query($db,$requete);
+			while($listado2 = mysqli_fetch_object($result2))
+			{
+				if ($listado2->Nivel>=$_SESSION['usuario_nivel'])
+				{
+					print "<option value=\"".$listado2->Nivel."\"";
+					if ($listado3->Nivel == $listado2->NivelLectura) print " selected";
+					print ">".$listado2->Nombre."</option>";
+				}
+			}	
+			print "</select></div></div>";		
+		}
+		else
+		{
+			$requete = "SELECT * FROM `NivelesPermisos` WHERE `Nivel`='".$listado2->NivelEscritura."'";
+			$result3 = mysqli_query($db,$requete);
+			$listado3 = mysqli_fetch_object($result3);
+			print "<div class='col-sm-10'>".$listado3->Nombre."</div></div>";
+		}		
+		if (isset($seccion)) print "<input name=\"seccion\" type=\"hidden\" value=\"".$seccion."\">";
+		if (isset($ruta)) print "<input name=\"ruta\" type=\"hidden\" value=\"".$ruta."\">";     
+	break;
+	case "bloque":
+		print "<input name=\"ampliacion\" type=\"hidden\" value=\"".$ampliacion."\">";
+		print "<input name=\"idampliacion\" type=\"hidden\" value=\"".$idampliacion."\">";
+		print "<input name=\"contenido\" type=\"hidden\" value=\"".$contenido."\">";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Titulo\">".$lang["titulo"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Titulo\" name=\"Titulo\" type=\"text\" value=\"".$listado->Titulo."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Texto\">".$lang["texto"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Texto\" name=\"Texto\" type=\"text\" value=\"".$listado->Breve."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Foto\">".$lang["imagen"]."</label><div class='col-sm-10'>";
+		if ($listado->Foto!="") print "<img style=\"max-width:100%;\" src=\"/Imagenes/".$listado->Foto."\" width=\"".$listado->AnchoFoto."\"> ";
+		print "<input class=\"form-control\" id=\"Foto\" name=\"Foto\" type=\"file\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"AnchoFoto\">".$lang["anchoimagen"]."</label><div class='col-sm-4'><input class=\"form-control\" id=\"AnchoFoto\" name=\"AnchoFoto\" size=\"4\" value=\"".$listado->AnchoFoto."\"></div><label class='col-sm-2 control-label' for=\"AltoFoto\">".$lang["altoimagen"]."</label><div class='col-sm-4'><input class=\"form-control\" id=\"AltoFoto\" value=\"".$listado->AltoFoto."\" name=\"AltoFoto\" size=\"4\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Enlace\">".$lang["enlace"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Enlace\" name=\"Enlace\" type=\"text\" value=\"".$listado->Redireccionar."\" size=\"50\" maxlength=\"255\"></div></div>";
+		print "<div class='form-group'><label class='col-sm-2 control-label' for=\"Tipo\">".$lang["tipo"]."</label><div class='col-sm-10'><input class=\"form-control\" id=\"Tipo\" name=\"Tipo\" type=\"text\" value=\"".$listado->Alternativo."\" size=\"50\" maxlength=\"255\"></div></div>";		
+		if (isset($seccion)) print "<input name=\"seccion\" type=\"hidden\" value=\"".$seccion."\">";
+		if (isset($ruta)) print "<input name=\"ruta\" type=\"hidden\" value=\"".$ruta."\">";     
+	break;
+}
+$requete = "SELECT * FROM `Publicaciones` WHERE `IdContenido`=".$idampliacion;
+
+$listado = mysqli_fetch_object($result);
+$fecha_inicio_array = explode(" ",$listado->FechaComienzo);
+$fecha_fin_array = explode(" ",$listado->FechaFin);
+print "<div class='form-group'><label class='col-sm-2 control-label'>".$lang['fechaComienzo']."</label><div class='col-sm-5'><input type='text' value='".$fecha_inicio_array[0]."' name='fechaComienzo' id='fechaComienzo' placeholder='yyyy-mm-dd' class='form-control'></div><div class='col-sm-5'><input type='text' name='fechaComienzoHoras' value='".$fecha_inicio_array[1]."' placeholder='hh:mm:ss' class='form-control'></div></div>";
+print "<div class='form-group'><label class='col-sm-2 control-label'>".$lang['fechaFin']."</label><div class='col-sm-5'><input type='text' value='".$fecha_fin_array[0]."' name='fechaFin' id='fechaFin' placeholder='yyyy-mm-dd' class='form-control'></div><div class='col-sm-5'><input type='text' name='fechaFinHoras' value='".$fecha_fin_array[1]."' placeholder='hh:mm:ss' class='form-control'></div></div>";
+print "<input class=\"btn btn-primary\" type=\"submit\" value=\"".$lang["enviar"]."\">";
+print "</form>";
+print '</div></div></div></div>';
+?>
